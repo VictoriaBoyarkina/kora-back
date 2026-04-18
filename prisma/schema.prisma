@@ -1,0 +1,172 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+//
+// ─────────────────────────────
+// USER
+// ─────────────────────────────
+//
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  authoredTasks Task[] @relation("TaskAuthor")
+  assignedTasks Task[] @relation("TaskAssignee")
+  updatedTasks  Task[] @relation("TaskUpdated")
+
+  projectMembers ProjectMember[]
+  createdBoards  Board[]         @relation("BoardCreator")
+
+  @@index([email])
+  @@index([updatedAt])
+  @@map("users")
+}
+
+//
+// ─────────────────────────────
+// PROJECT
+// ─────────────────────────────
+//
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  members ProjectMember[]
+  boards  Board[]
+
+  @@index([updatedAt])
+  @@map("projects")
+}
+
+model ProjectMember {
+  userId    String
+  projectId String
+
+  role      ProjectRole @default(VIEWER)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([userId, projectId])
+  @@index([projectId])
+  @@index([userId])
+  @@index([updatedAt])
+  @@map("project_members")
+}
+
+//
+// ─────────────────────────────
+// BOARD
+// ─────────────────────────────
+//
+
+model Board {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  createdById String
+  projectId   String
+
+  createdBy User    @relation("BoardCreator", fields: [createdById], references: [id])
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  columns BoardColumn[]
+
+  @@index([projectId])
+  @@index([createdById])
+  @@index([updatedAt])
+  @@map("boards")
+}
+
+//
+// ─────────────────────────────
+// COLUMN
+// ─────────────────────────────
+//
+
+model BoardColumn {
+  id        String   @id @default(uuid())
+  name      String
+  position  Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  tasks Task[]
+
+  @@index([boardId])
+  @@index([updatedAt])
+  @@index([boardId, position])
+  @@map("board_columns")
+}
+
+//
+// ─────────────────────────────
+// TASK
+// ─────────────────────────────
+//
+
+model Task {
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+  position    Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  columnId String
+  column   BoardColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+  authorId    String?
+  assigneeId  String?
+  updatedById String?
+
+  author    User? @relation("TaskAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  assignee  User? @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("TaskUpdated", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([columnId])
+  @@index([assigneeId])
+  @@index([authorId])
+  @@index([updatedAt])
+  @@index([columnId, position])
+  @@map("tasks")
+}
+
+enum Role {
+  USER
+  ADMIN
+
+  @@map("user_roles")
+}
+
+enum ProjectRole {
+  OWNERforma
+  ADMIN
+  MEMBER
+  VIEWER
+}
