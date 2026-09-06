@@ -1,5 +1,5 @@
 generator client {
-  provider     = "prisma-client"
+  provider     = "prisma-client-js"
   output       = "../generated/prisma"
   moduleFormat = "cjs"
 }
@@ -165,7 +165,7 @@ enum Role {
 }
 
 enum ProjectRole {
-  OWNERforma
+  OWNER
   ADMIN
   MEMBER
   VIEWER
