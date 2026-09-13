@@ -1,0 +1,42 @@
+name: Deploy to Timeweb (dev)
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Переходим в папку с проектом
+            cd /root/kora-back
+
+            # Забираем последние изменения из ветки dev
+            git pull origin dev
+
+            # Устанавливаем зависимости (используем ci для надежности)
+            npm ci
+
+            # Генерируем Prisma Client (это критично для вашего проекта)
+            npx prisma generate
+
+            # Собираем проект (компилируем TypeScript в JavaScript)
+            npm run build
+
+            # Применяем миграции к базе данных
+            npx prisma migrate deploy
+
+            # Перезапускаем приложение через PM2
+            pm2 restart kora-back
